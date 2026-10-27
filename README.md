@@ -38,6 +38,26 @@ print(answer.text, [(p.source, p.id) for p in answer.citations], answer.grounded
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    Documents[Documents and files] --> Chunk[Overlapping chunks]
+    Chunk --> Index[(SQLite FTS5)]
+    Question[Question] --> Retrieve[BM25 retrieval]
+    Index --> Retrieve
+    Retrieve --> LLM[Answer model]
+    LLM --> Verify[Quote and source ID verification]
+    Verify -->|Grounded| Answer[Cited answer]
+    Verify -->|Unsupported| Fallback[Optional search fallback]
+    Fallback --> Index
+    Verify -->|Still unsupported| Abstain[Abstain]
+```
+
+| Component | Responsibility |
+|---|---|
+| Ingestion | Replaces a source atomically and supports file size limits. |
+| Retrieval | Uses SQLite FTS5 to rank indexed passages. |
+| Grounding gate | Requires exact evidence quotes from retrieved passage IDs. |
+
 Ingest -> fixed text chunks -> SQLite FTS5 -> BM25 retrieval -> model answer with evidence quotes -> quote and source ID validation -> optional search fallback -> answer or abstention.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for components, state, failure behavior, and operations.
