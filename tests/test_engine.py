@@ -1,0 +1,24 @@
+from citation_grounded_rag.engine import CitationRAG
+
+
+class Stub:
+    def __init__(self, answer):
+        self.answer = answer
+
+    def complete(self, messages, *, model=None):
+        return self.answer
+
+
+def test_grounded_answer(tmp_path):
+    rag = CitationRAG(tmp_path / "rag.db", Stub(''))
+    rag.ingest("handbook", "The support hours are 9 to 5 on weekdays.")
+    passage = rag.retrieve("support hours")[0]
+    rag.llm = Stub('{"answer":"9 to 5 on weekdays","evidence":[{"id":' + str(passage.id) + ',"quote":"9 to 5 on weekdays"}],"confidence":0.9}')
+    answer = rag.ask("What are the support hours?")
+    assert answer.grounded and answer.citations[0].source == "handbook"
+
+
+def test_rejects_fabricated_citation(tmp_path):
+    rag = CitationRAG(tmp_path / "rag.db", Stub('{"answer":"Always open","evidence":[{"id":999,"quote":"always"}],"confidence":1}'))
+    rag.ingest("handbook", "Support hours are 9 to 5.")
+    assert not rag.ask("support hours").grounded
