@@ -22,3 +22,14 @@ def test_rejects_fabricated_citation(tmp_path):
     rag = CitationRAG(tmp_path / "rag.db", Stub('{"answer":"Always open","evidence":[{"id":999,"quote":"always"}],"confidence":1}'))
     rag.ingest("handbook", "Support hours are 9 to 5.")
     assert not rag.ask("support hours").grounded
+
+
+def test_fallback_search_populates_index(tmp_path):
+    queries = []
+    def fallback(query):
+        queries.append(query)
+        return [("search-result", "The policy allows refunds within 30 days.")]
+    rag = CitationRAG(tmp_path / "rag.db", Stub("{}"), fallback_search=fallback)
+    rag.ask("refunds policy")
+    assert queries == ["refunds policy"]
+    assert rag.retrieve("refunds")[0].source == "search-result"
