@@ -26,6 +26,19 @@ pytest -q
 
 For live model calls, set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` and `OPENAI_BASE_URL` as shown in `.env.example`. The test suite uses stubs and needs no model key.
 
+The installed `citation-rag` command maintains a durable knowledge base. Ingest and search work without a model key; `ask` uses the configured model and verifies its source quotes:
+
+```bash
+citation-rag --db knowledge.sqlite3 ingest policy.txt
+citation-rag --db knowledge.sqlite3 sources
+citation-rag --db knowledge.sqlite3 search "refund policy"
+citation-rag --db knowledge.sqlite3 ask "When can I get a refund?"
+```
+
+Run `citation-rag --help` for delete and retrieval options. The CLI emits JSON for scripting.
+
+For the browser product, run `citation-rag --db knowledge.sqlite3 serve --port 8080` and open `http://127.0.0.1:8080`. The browser can ingest pasted text, search offline, ask grounded questions, list sources, and delete a source. The server binds to localhost.
+
 ```python
 from citation_grounded_rag.engine import CitationRAG
 from citation_grounded_rag.llm import OpenAICompatibleLLM
@@ -40,6 +53,8 @@ print(answer.text, [(p.source, p.id) for p in answer.citations], answer.grounded
 
 ```mermaid
 flowchart LR
+    CLI[Command line] --> Question
+    Browser[Browser interface] --> Question
     Documents[Documents and files] --> Chunk[Overlapping chunks]
     Chunk --> Index[(SQLite FTS5)]
     Question[Question] --> Retrieve[BM25 retrieval]
@@ -63,6 +78,8 @@ Ingest -> fixed text chunks -> SQLite FTS5 -> BM25 retrieval -> model answer wit
 See [ARCHITECTURE.md](ARCHITECTURE.md) for components, state, failure behavior, and operations.
 
 ## Deployment and safety
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the non-root container, token-protected browser, data mounts, and release checks.
 
 Exact quotes and source IDs are checked, but entailment of the full answer is not formally proved. Add domain evaluations and human review for high stakes use. Ingestion replaces passages for a source atomically.
 

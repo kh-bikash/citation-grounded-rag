@@ -9,6 +9,9 @@ description = "SQLite FTS retrieval, cited answers, and groundedness checks."
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+citation-rag = "citation_grounded_rag.__main__:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff==0.17.3"]
 
