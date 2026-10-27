@@ -2,6 +2,8 @@
 
 Index text in SQLite FTS5, retrieve relevant passages, require exact source quotes for every citation, and optionally use a search fallback.
 
+`ingest_file` loads UTF-8 text with a size limit. Ingestion uses overlapping chunks and replaces existing passages for the same source atomically. `sources()` and `delete_source()` support index maintenance.
+
 ## Quick start
 
 Requires Python 3.11 or newer. From this repository:

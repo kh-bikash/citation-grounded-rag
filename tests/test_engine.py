@@ -33,3 +33,12 @@ def test_fallback_search_populates_index(tmp_path):
     rag.ask("refunds policy")
     assert queries == ["refunds policy"]
     assert rag.retrieve("refunds")[0].source == "search-result"
+
+
+def test_overlapping_ingestion_and_source_replacement(tmp_path):
+    rag = CitationRAG(tmp_path / "rag.db", Stub("{}"))
+    count = rag.ingest("manual", "a" * 150 + " refund " + "b" * 150, chunk_chars=120, overlap_chars=30)
+    assert count > 2 and rag.sources() == [("manual", count)]
+    rag.ingest("manual", "Replacement policy text.")
+    assert rag.sources() == [("manual", 1)]
+    assert rag.delete_source("manual") == 1 and rag.sources() == []

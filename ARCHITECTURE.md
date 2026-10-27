@@ -29,3 +29,16 @@ The LLM adapter times out after 30 seconds and retries transient HTTP failures t
 3. Persist SQLite files on durable storage and back them up; migrate to a managed database for high write volume or multiple replicas.
 4. Run `pytest -q` in CI before deployment.
 5. Define workload specific evaluation cases, latency objectives, and rollback criteria before serving real users.
+
+## Index and answer lifecycle
+
+`passages` is an SQLite FTS5 virtual table. `ingest` splits text into overlapping chunks and replaces all chunks for a source within one transaction; `ingest_file` enforces a byte limit and UTF-8 encoding. `sources` and `delete_source` provide index maintenance. Search uses FTS5 BM25 ranking. A caller-provided `fallback_search` may ingest extra documents once when retrieval or grounding fails.
+
+The model must return an answer, confidence, and evidence items with an exact quote and passage ID. The validator checks that every ID was in the retrieved set and every quote is an exact substring of its passage. If confidence falls below `min_confidence`, or evidence is malformed, the agent abstains after the optional fallback. This establishes provenance, not formal entailment; evaluate answer correctness with domain data.
+
+| Failure | Behavior |
+|---|---|
+| No matching passage | One search fallback, then abstain |
+| Fabricated ID or quote | Reject answer |
+| Unparseable model JSON | Reject answer |
+| Source update | Atomic replacement of that source's chunks |
