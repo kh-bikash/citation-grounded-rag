@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -120,36 +119,33 @@ class CitationRAG:
                     self.ingest(source, text)
                 return self.ask(query, limit=limit, _fallback_used=True)
             return Answer("I could not find relevant source material.", (), 0.0, False)
-        context = "\n".join(f"[{p.id}] {p.source}: {p.text}" for p in passages)
-        raw = self.llm.complete(
-            [
-                {
-                    "role": "system",
-                    "content": "Answer only from supplied passages. Return JSON with keys answer, evidence (array of {id: integer, quote: exact supporting substring}), confidence (0 to 1). If unsupported, say so and use no evidence.",
-                },
-                {"role": "user", "content": f"Question: {query}\nPassages:\n{context}"},
-            ]
+        context = "\n".join(
+            f"[{p.id}] Source: {p.source}\nText: {p.text}\nEnd text." for p in passages
         )
-        try:
-            data = json.loads(raw)
-            evidence = data["evidence"]
-            confidence = float(data["confidence"])
-            by_id = {p.id: p for p in passages}
-            ids = [item["id"] for item in evidence]
-            selected = tuple(by_id[i] for i in ids)
-            grounded = (
-                bool(selected)
-                and len(selected) == len(set(ids))
-                and all(
-                    item["quote"].strip() and item["quote"] in by_id[item["id"]].text
-                    for item in evidence
+        from .grounding import validated_answer
+
+        messages = [
+            {
+                "role": "system",
+                "content": "Answer only from supplied passages. Return only a JSON object with keys answer, evidence (array of {id: integer, quote: exact supporting substring of that passage's Text field}), confidence (0 to 1). Do not include Source labels, passage IDs, or Text labels in quotes. If unsupported, say so and use no evidence.",
+            },
+            {"role": "user", "content": f"Question: {query}\nPassages:\n{context}"},
+        ]
+        for attempt in range(2):
+            raw = self.llm.complete(messages)
+            answer = validated_answer(raw, passages, self.min_confidence)
+            if answer:
+                return answer
+            if attempt == 0:
+                messages.extend(
+                    [
+                        {"role": "assistant", "content": raw},
+                        {
+                            "role": "user",
+                            "content": "The answer failed citation validation. Retry with JSON only. Each evidence quote must be copied character-for-character from the cited passage's Text field, without Source or Text labels. If no passage supports the answer, use an empty evidence array.",
+                        },
+                    ]
                 )
-                and self.min_confidence <= confidence <= 1
-            )
-            if grounded:
-                return Answer(str(data["answer"]), selected, confidence, True)
-        except (ValueError, TypeError, KeyError):
-            pass
         if self.fallback_search and not _fallback_used:
             for source, text in self.fallback_search(query):
                 self.ingest(source, text)

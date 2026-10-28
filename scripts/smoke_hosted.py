@@ -92,6 +92,16 @@ def main() -> None:
                     )
                     search.raise_for_status()
                     assert len(search.json()["result"]) == 1
+                    answer = web.post(
+                        f"{hosted_url}/api/action",
+                        headers={"Origin": hosted_url},
+                        json={
+                            "action": "ask",
+                            "values": {"query": "What is the private hosted document?"},
+                        },
+                    )
+                    answer.raise_for_status()
+                    assert answer.json()["result"]["grounded"] is True
             print("Two-user RLS and RAG operations passed")
         finally:
             for user_id in users:
