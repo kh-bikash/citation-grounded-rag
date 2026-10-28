@@ -51,6 +51,22 @@ print(answer.text, [(p.source, p.id) for p in answer.citations], answer.grounded
 
 ## Architecture
 
+The hosted web app uses Supabase Auth and a Postgres full-text index. Each passage carries the authenticated user's ID; row-level policies isolate users.
+
+```mermaid
+flowchart LR
+    User[Browser] -->|HTTPS| App[FastAPI on Vercel]
+    App -->|Email and password| Auth[Supabase Auth]
+    App -->|User JWT| RPC[Supabase Data API]
+    RPC --> RLS[Row-level security]
+    RLS --> Index[(Postgres full-text passages)]
+    App -->|Retrieved passages| Model[OpenAI-compatible model]
+    Model --> Gate[Exact quote and source ID gate]
+    Gate --> User
+```
+
+The CLI/container architecture below remains available for local workflows.
+
 ```mermaid
 flowchart LR
     CLI[Command line] --> Question
@@ -79,7 +95,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for components, state, failure behavior, 
 
 ## Deployment and safety
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the non-root container, token-protected browser, data mounts, and release checks.
+The hosted app is available at [citation-grounded-rag.vercel.app](https://citation-grounded-rag.vercel.app/). Signed-in users can ingest and search private text without a model key. Grounded answers need the configured model provider.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the Supabase migration, Vercel deployment, the non-root container option, and release checks.
 
 Exact quotes and source IDs are checked, but entailment of the full answer is not formally proved. Add domain evaluations and human review for high stakes use. Ingestion replaces passages for a source atomically.
 

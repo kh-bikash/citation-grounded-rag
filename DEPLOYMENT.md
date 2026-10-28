@@ -1,5 +1,17 @@
 # Deployment
 
+## Hosted web application
+
+`app.py` exports FastAPI for Vercel at <https://citation-grounded-rag.vercel.app/>. The Vercel project `citation-grounded-rag` is connected to the shared `agent-suite-supabase` resource and uses the `fastapi` framework preset. The hosted interface uses Supabase Auth email/password sessions in Secure, HttpOnly cookies. Every action verifies the user's token, then calls Supabase RPC with that same token. Postgres RLS limits passage access by `auth.uid()`; the SQL migration also revokes Supabase's broad default grants.
+
+Apply migrations with `supabase db push --db-url <direct database URL>` from a trusted operator machine. Store the URL outside Git and avoid printing it. The migration files live in `supabase/migrations/`. Run `scripts/check_supabase.py` with `DATABASE_URL` set to verify RLS and grants. `scripts/smoke_hosted.py` can verify two-user isolation using temporary accounts; it requires `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`, and deletes its accounts afterward. The service role key is only for this operator check, never for the web app.
+
+The web app needs `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (or `SUPABASE_ANON_KEY`), which the Vercel integration supplies. Add `OPENAI_API_KEY`, plus optional `OPENAI_MODEL` and `OPENAI_BASE_URL`, for grounded answer generation. Search, ingestion, listing, and deletion work without a model key. Configure Supabase email delivery and confirmation redirects before inviting users at scale.
+
+The hosted product permits 80,000 characters per ingest request, up to 100 chunks per source, and 2,000 passages per user. Source replacement is atomic. Postgres full-text search ranks results. Exact source quotes and retrieved IDs are checked before an answer is marked grounded; the answer's overall factual entailment is not formally proven.
+
+Release checks: `uv lock --check`, `ruff check app.py src tests scripts`, `ruff format --check app.py src tests scripts`, `pytest -q`, schema access check, two-user smoke test, and public HTTP checks of `/`, `/healthz`, and unauthenticated 401 from `/api/session`.
+
 ## Local product
 
 Install with `python -m pip install -e .`, then run the command shown in README. The browser binds to `127.0.0.1:8080` by default. `GET /healthz` is a lightweight health endpoint.
