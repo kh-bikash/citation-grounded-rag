@@ -1,8 +1,17 @@
-# Citation Grounded Rag
+# Citation Grounded RAG
 
-Index text in SQLite FTS5, retrieve relevant passages, require exact source quotes for every citation, and optionally use a search fallback.
+## About
 
-`ingest_file` loads UTF-8 text with a size limit. Ingestion uses overlapping chunks and replaces existing passages for the same source atomically. `sources()` and `delete_source()` support index maintenance.
+This app helps you ask questions about your own documents and see where an answer came from. Add text to a private knowledge base, search it directly, or ask a question. For model-generated answers, the app checks that every cited quote appears exactly in a retrieved passage. If it cannot verify support, it returns an uncertain answer instead of presenting a citation it cannot back up.
+
+### What you can do
+
+- Add pasted text in the [hosted app](https://citation-grounded-rag.vercel.app/) or ingest UTF-8 files with the local CLI.
+- Search documents without spending model tokens.
+- Ask questions and inspect the passages cited in the answer.
+- List and remove sources when your knowledge base changes.
+
+The hosted app uses email and password accounts and keeps each user's passages separate. The local CLI and browser use a SQLite index; the hosted app uses Postgres. Exact quote matching checks the evidence text, but it does not mathematically prove that every sentence in the answer follows from that evidence. Review answers before using them for important decisions.
 
 ## Quick start
 
