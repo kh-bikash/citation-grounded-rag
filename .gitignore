@@ -9,3 +9,6 @@ dist/
 *.db
 *.sqlite3
 .coverage
+.vercel
+.env*
+supabase/.temp/

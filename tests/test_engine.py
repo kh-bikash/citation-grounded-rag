@@ -33,6 +33,23 @@ def test_rejects_fabricated_citation(tmp_path):
     assert not rag.ask("support hours").grounded
 
 
+def test_retry_recovers_exact_citation(tmp_path):
+    class RetryStub:
+        calls = 0
+
+        def complete(self, messages, *, model=None):
+            self.calls += 1
+            if self.calls == 1:
+                return '{"answer":"9 to 5","evidence":[{"id":1,"quote":"Source: handbook"}],"confidence":0.9}'
+            return '{"answer":"9 to 5","evidence":[{"id":1,"quote":"9 to 5"}],"confidence":0.9}'
+
+    llm = RetryStub()
+    rag = CitationRAG(tmp_path / "rag.db", llm)
+    rag.ingest("handbook", "Support hours are 9 to 5.")
+    assert rag.ask("support hours").grounded
+    assert llm.calls == 2
+
+
 def test_fallback_search_populates_index(tmp_path):
     queries = []
 
